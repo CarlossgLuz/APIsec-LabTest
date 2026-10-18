@@ -1,7 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, create_app
 
 client = TestClient(app)
 
@@ -65,6 +68,29 @@ def test_admin_deletes_document(document_id):
 
 def test_admin_delete_missing_document():
     assert client.delete("/documents/999", headers=headers("admin")).status_code == 404
+
+
+def test_concurrent_admin_deletion_returns_safe_statuses():
+    barrier = Barrier(2)
+
+    class ConcurrentDocuments(dict):
+        def get(self, key, default=None):
+            document = super().get(key, default)
+            barrier.wait(timeout=5)
+            return document
+
+    application = create_app(include_ui=False)
+    application.state.documents = ConcurrentDocuments(application.state.documents)
+    with TestClient(application, raise_server_exceptions=False) as test_client:
+
+        def delete():
+            return test_client.delete(
+                "/documents/1", headers=headers("admin")
+            ).status_code
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            statuses = list(executor.map(lambda _: delete(), range(2)))
+    assert sorted(statuses) == [204, 404]
 
 
 @pytest.mark.parametrize("method", ["get", "delete"])

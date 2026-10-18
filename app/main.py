@@ -38,9 +38,8 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
         document = application.state.documents.get(document_id)
         if not can_delete_document(user, document):
             raise HTTPException(status_code=403, detail="Permission denied")
-        if document is None:
+        if application.state.documents.pop(document_id, None) is None:
             raise HTTPException(status_code=404, detail="Document not found")
-        del application.state.documents[document_id]
         return Response(status_code=204)
 
     if include_ui:
