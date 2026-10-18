@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.auth import User, require_authentication
 from app.data import create_documents
@@ -13,6 +14,9 @@ from app.policies import Document, can_delete_document, can_read_document
 def create_app(*, include_ui: bool = True) -> FastAPI:
     application = FastAPI(
         title="APIsec", description="APIsec Lab Test", version="2.0.0"
+    )
+    application.add_middleware(
+        TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "testserver"]
     )
     application.state.documents = create_documents()
 

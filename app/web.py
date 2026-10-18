@@ -24,10 +24,16 @@ def scenarios():
 
 
 @router.post("/api/simulations/{scenario}")
-def simulate(scenario: str):
+def simulate(scenario: str, request: Request):
     from lab.reports import save_report, to_markdown
     from lab.runner import SCENARIOS, run_scenario
 
+    origin = request.headers.get("origin")
+    expected_origin = f"{request.url.scheme}://{request.url.netloc}"
+    if (origin is not None and origin != expected_origin) or request.headers.get(
+        "sec-fetch-site"
+    ) == "cross-site":
+        raise HTTPException(status_code=403, detail="Cross-origin execution denied")
     if scenario not in SCENARIOS:
         raise HTTPException(status_code=404, detail="Unknown scenario")
     result = run_scenario(scenario)
