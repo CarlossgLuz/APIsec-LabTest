@@ -59,15 +59,26 @@ def test_status():
         ):
             raise ValueError("Unsupported XML")
         root = ElementTree.fromstring(data)
+        if root.tag not in {"testsuite", "testsuites"}:
+            raise ValueError("Unsupported root")
         suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
         if not suites:
             raise ValueError("Missing suites")
-        counts = {
-            key: sum(int(suite.get(key, "0")) for suite in suites)
-            for key in ("tests", "failures", "errors", "skipped")
-        }
-        if any(value < 0 for value in counts.values()):
-            raise ValueError("Invalid counts")
+        counts = dict.fromkeys(("tests", "failures", "errors", "skipped"), 0)
+        for suite in suites:
+            values = {}
+            for key in counts:
+                value = suite.get(key, "")
+                if not value.isascii() or not value.isdecimal():
+                    raise ValueError("Invalid counts")
+                values[key] = int(value)
+            if (
+                sum(values[key] for key in ("failures", "errors", "skipped"))
+                > values["tests"]
+            ):
+                raise ValueError("Inconsistent counts")
+            for key in counts:
+                counts[key] += values[key]
         return {"available": True, **counts, "source": "junit.xml"}
     except (OSError, ElementTree.ParseError, DefusedXmlException, ValueError):
         return {"available": False}

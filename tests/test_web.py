@@ -119,12 +119,34 @@ def test_test_status_reads_junit(client, tmp_path):
     }
 
 
+def test_test_status_aggregates_valid_suites(client, tmp_path):
+    (tmp_path / "junit.xml").write_text(
+        '<testsuites><testsuite tests="2" failures="1" errors="0" skipped="0"/>'
+        '<testsuite tests="3" failures="0" errors="1" skipped="1"/></testsuites>',
+        encoding="utf-8",
+    )
+    assert client.get("/api/test-status").json() == {
+        "available": True,
+        "tests": 5,
+        "failures": 1,
+        "errors": 1,
+        "skipped": 1,
+        "source": "junit.xml",
+    }
+
+
 @pytest.mark.parametrize(
     "xml",
     [
         "not xml",
         '<!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><testsuite/>',
         '<testsuite tests="invalid"/>',
+        "<testsuite/>",
+        '<unexpected><testsuite tests="1" failures="0" errors="0" '
+        'skipped="0"/></unexpected>',
+        '<testsuite tests="1" failures="99" errors="0" skipped="0"/>',
+        '<testsuites><testsuite tests="2" failures="-1" errors="0" skipped="0"/>'
+        '<testsuite tests="2" failures="1" errors="0" skipped="0"/></testsuites>',
     ],
 )
 def test_invalid_junit_is_unavailable(client, tmp_path, xml):
