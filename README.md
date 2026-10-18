@@ -1,8 +1,12 @@
-# APIsec-LabTest
+# APIsec v2.0
 
-Laboratório local de AppSec com FastAPI, testes de autorização e demonstrações de BOLA e BFLA.
+Laboratório de AppSec com FastAPI. Execute simulações de autorização, compare
+respostas vulneráveis e protegidas e exporte as evidências em Markdown ou JSON.
+Todos os resultados são simulações controladas com dados fictícios.
 
-## Executar
+## Executar localmente
+
+Requisitos: Python 3.13 ou Docker com Compose v2.
 
 ```sh
 python -m venv .venv
@@ -11,67 +15,164 @@ python -m pip install -r requirements-dev.txt
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-A documentação interativa está em http://127.0.0.1:8000/docs.
+Abra http://127.0.0.1:8000 para acessar o dashboard. Selecione um cenário,
+execute e compare as respostas. Os botões de exportação baixam o resultado atual;
+o servidor também salva uma cópia em `reports/`.
 
-## Autenticação e permissões
+A documentação da API fica em http://127.0.0.1:8000/docs. O health check é
+`GET /health`.
 
-Use `Authorization: Bearer <token>` com estes valores públicos e fictícios:
+## Cenários
 
-| Pessoa | Token de laboratório | ID | Papel |
+| Cenário | Operação como Alice | Vulnerável | Protegida |
+| --- | --- | --- | --- |
+| BOLA — API1:2023 | Ler o documento de Bob | `200` | `404` |
+| BFLA — API5:2023 | Excluir o documento de Bob | `204` | `403` |
+| BOPLA — API3:2023 | Ler o próprio documento | Expõe `internal_notes` | Omite o campo |
+
+BOLA verifica a permissão sobre o objeto; BFLA, o acesso à operação; BOPLA,
+os campos que podem ser devolvidos. A demonstração BOPLA cobre exposição de
+propriedades, não alteração indevida de campos.
+
+Cada execução cria duas aplicações com dados novos. A versão vulnerável existe
+somente dentro do `TestClient`: suas rotas não são montadas no servidor principal.
+Excluir um documento em uma simulação não altera a API principal nem outras execuções.
+
+A API principal mantém dois documentos em memória: 1 de Alice e 2 de Bob.
+Alice e Bob leem apenas documentos próprios; Admin lê e exclui qualquer documento.
+O modelo de resposta permite apenas `id`, `owner_id`, `title` e `content`, inclusive
+para Admin.
+
+Para chamadas diretas, use `Authorization: Bearer <token>`:
+
+| Identidade | Token fictício | ID | Papel |
 | --- | --- | --- | --- |
 | Alice | `alice-token` | 1 | user |
 | Bob | `bob-token` | 2 | user |
 | Admin | `admin-token` | 3 | admin |
 
-O documento 1 pertence a Alice; o documento 2, a Bob.
-Alice e Bob leem apenas documentos próprios. Admin lê e exclui qualquer documento.
-Leitura de documento alheio e inexistente retorna o mesmo `404`.
-Exclusão por usuário comum retorna `403`; exclusão por Admin retorna `204` sem corpo.
-Documento inexistente retorna `404` para Admin. Token ausente ou inválido retorna `401`.
-`GET /health` é público.
+São valores públicos de laboratório, sem validade como autenticação de produção.
+Não exponha esta aplicação à internet.
+
+## Relatórios e testes
 
 ```sh
-curl -i -H 'Authorization: Bearer alice-token' http://127.0.0.1:8000/documents/1
-curl -i -H 'Authorization: Bearer alice-token' http://127.0.0.1:8000/documents/2
-curl -i -X DELETE -H 'Authorization: Bearer admin-token' http://127.0.0.1:8000/documents/2
+python -m lab.cli --output-dir reports
+python -m lab.cli --scenario bopla --output-dir reports
+python -m pytest -v --junitxml=reports/junit.xml
+python -m ruff check .
+python -m ruff format --check .
+python -m bandit -r app lab
 ```
 
-## Testes
+A CLI retorna código 1 se uma simulação não reproduzir o comportamento esperado.
+Cada execução gera um par de arquivos com UUID, referência OWASP, identidade,
+operação, respostas, impacto simulado e mitigação. Cabeçalhos de autenticação não
+são registrados; valores internos e valores fora dos dados previstos são redigidos.
+Não há CVSS, classificação de severidade ou alegação de descoberta real.
+
+O dashboard lê os totais do último `junit.xml`; ele não executa Pytest pelo navegador.
+Sem esse arquivo, mostra “Sem registro”. O arquivo representa a última execução
+registrada, não uma verificação contínua do código.
+
+`REPORTS_DIR` configura o diretório de saída, com padrão `reports/`. Os relatórios
+não são versionados e se acumulam: remova os que não precisar mais. A interface
+mostra somente o resultado da sessão atual, sem histórico compartilhado.
+
+## Docker Compose
 
 ```sh
-python -m pytest -v
+docker compose config --quiet
+docker compose build
+docker compose up -d --wait
+docker compose ps
 ```
 
-Os testes restauram o estado em memória após cada caso, inclusive quando falham.
-Há cobertura de autenticação, isolamento entre proprietários, privilégios de Admin,
-exclusão, documento inexistente e health check.
-
-## BOLA e BFLA
-
-Os testes comparam a API segura com uma aplicação vulnerável isolada:
-
-| Cenário | API vulnerável | API segura |
-| --- | --- | --- |
-| Alice lê o documento de Bob (BOLA) | `200` | `404` |
-| Alice exclui o documento de Bob (BFLA) | `204` | `403` |
+Acesse http://127.0.0.1:8000. O serviço usa usuário sem privilégios, filesystem
+somente leitura, volume gravável para relatórios, health check e limites de CPU,
+memória, processos e logs. Apenas `127.0.0.1:8000` é publicado no host.
 
 ```sh
-python -m pytest tests/test_attack_scenarios.py -v
+# Gerar relatórios dentro do container
+docker compose exec apisec python -m lab.cli --output-dir /app/reports
+
+# Copiar relatórios para o host
+mkdir -p reports
+docker compose cp apisec:/app/reports/. ./reports
+
+# Parar sem excluir os relatórios
+docker compose down
 ```
 
-A aplicação em `lab/vulnerable_app.py` é instanciada pelo `TestClient`,
-com dados independentes e sem abrir servidor. Os testes passam quando demonstram
-as falhas na versão vulnerável e os bloqueios na segura.
+Para apresentar o JUnit no dashboard do container, gere-o no host e copie:
 
-## GitHub Actions
+```sh
+python -m pytest -v --junitxml=reports/junit.xml
+docker compose cp reports/junit.xml apisec:/app/reports/junit.xml
+```
 
-O [workflow de testes](.github/workflows/security-tests.yml) executa
-`python -m pytest -v` com Python 3.13 em pushes para `main`, pull requests
-ou acionamento manual. Consulte as execuções na aba
-[Actions](https://github.com/CarlossgLuz/APIsec-LabTest/actions).
+Use tags distintas para manter a imagem anterior disponível:
 
-## Limites
+```sh
+# Registrar a imagem da versão atual antes de atualizar o checkout
+APISEC_IMAGE_TAG=previous docker compose build
 
-Tokens fixos são somente demonstrativos e não servem para produção.
-Os documentos são locais ao processo e reiniciam com o servidor; execute um único worker.
-Não há frontend, banco de dados ou JWT.
+# Após obter o código da próxima versão
+APISEC_IMAGE_TAG=v2 docker compose build
+APISEC_IMAGE_TAG=v2 docker compose up -d --no-build --wait
+
+# Rollback para a imagem preservada
+APISEC_IMAGE_TAG=previous docker compose up -d --no-build --wait
+```
+
+Não use `down -v` se precisar preservar os relatórios. As imagens anteriores
+precisam existir localmente para o rollback.
+
+## Pipeline
+
+O [GitHub Actions](.github/workflows/security-tests.yml) executa Ruff, Bandit,
+Pytest/JUnit, geração de relatórios, validação do Compose e build da imagem.
+Falhas interrompem o job. Os arquivos disponíveis em `reports/` são enviados como
+artifacts por 14 dias, inclusive se uma etapa falhar. O workflow roda em push para
+`main`, pull request ou acionamento manual; não publica imagem nem faz deploy.
+
+## Preparação para EC2
+
+Implantação manual prevista para uma única instância Linux com Docker Engine,
+Compose v2 e Git. Não há provisionamento automatizado.
+
+1. Confira no console a elegibilidade da instância ao Free Tier, a região,
+   os créditos e os limites da conta. O selo de elegibilidade não garante custo zero.
+2. Use uma instância pequena compatível com a imagem e um volume com espaço para o build.
+   Restrinja SSH ao seu IP; mantenha a porta 8000 fechada no Security Group.
+3. Copie ou clone uma versão revisada, entre na pasta e execute os comandos de
+   build e inicialização do Compose acima.
+4. Acesse por túnel SSH, mantendo a publicação restrita ao loopback:
+
+```sh
+ssh -L 8000:127.0.0.1:8000 usuario@host-da-instancia
+```
+
+Abra http://127.0.0.1:8000 no seu computador. Use o mesmo processo de tags para
+atualização e rollback. Esta tarefa não cria instância, IAM, rede ou outros recursos AWS.
+
+A elegibilidade varia conforme a data de criação da conta e as regras vigentes:
+[documentação oficial do EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html).
+
+## Estrutura e limites
+
+- `app/`: autenticação, políticas, modelos de resposta e interface Jinja2.
+- `lab/`: aplicação vulnerável isolada, executor, relatórios e CLI.
+- `tests/`: regressão funcional, cenários de segurança e isolamento.
+- `reports/`: resultados locais e JUnit, fora do Git.
+
+Não há banco de dados, scanner de URLs ou autenticação de produção. Os dados da
+API principal são locais ao processo e reiniciam com o servidor; use um único worker.
+As simulações sempre partem de cópias novas.
+
+Validação local: suíte Python, Ruff e Bandit executados. Build e execução do container
+ainda precisam ser confirmados em um host com Docker; o ambiente de desenvolvimento
+usado nesta entrega não dispõe de runtime de containers.
+
+Referências: [OWASP API Security 2023](https://owasp.org/API-Security/editions/2023/en/0x00-header/)
+e [Compose Specification](https://docs.docker.com/reference/compose-file/services/).
