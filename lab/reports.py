@@ -1,6 +1,9 @@
+import fcntl
 import json
 from pathlib import Path
 from uuid import UUID
+
+MAX_REPORTS = 500
 
 
 def to_markdown(result: dict) -> str:
@@ -23,18 +26,32 @@ def to_markdown(result: dict) -> str:
         f"## Evidências\n\n```json\n{evidence}\n```\n\n"
         f"## Impacto simulado\n\n{result['impact']}\n\n"
         f"## Mitigação\n\n{result['mitigation']}\n\n"
-        "Valores internos e campos não previstos são omitidos como [REDACTED]. "
+        "Campos não previstos são omitidos; valores internos usam [REDACTED]. "
         "Cabeçalhos de autenticação não são registrados.\n"
     )
 
 
 def save_report(result: dict, output_dir: Path) -> tuple[Path, Path]:
     identifier = str(UUID(result["id"]))
+    payloads = {
+        output_dir / f"{identifier}.json": (
+            json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+        ),
+        output_dir / f"{identifier}.md": to_markdown(result),
+    }
     output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / f"{identifier}.json"
-    markdown_path = output_dir / f"{identifier}.md"
-    json_path.write_text(
-        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    markdown_path.write_text(to_markdown(result), encoding="utf-8")
-    return json_path, markdown_path
+    with (output_dir / ".report.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if sum(1 for _ in output_dir.glob("*.json")) >= MAX_REPORTS:
+            raise OSError("Report limit reached; archive existing reports first")
+        created = []
+        try:
+            for path, content in payloads.items():
+                with path.open("x", encoding="utf-8") as report:
+                    created.append(path)
+                    report.write(content)
+        except OSError:
+            for path in created:
+                path.unlink(missing_ok=True)
+            raise
+    return tuple(payloads)

@@ -51,6 +51,15 @@ def _evidence(response):
         seed = create_documents().get(raw.get("id"), {})
         body = {}
         for key, value in raw.items():
+            if key not in {
+                "id",
+                "owner_id",
+                "title",
+                "content",
+                "detail",
+                "internal_notes",
+            }:
+                continue
             if key in {"id", "owner_id", "title", "content"} and value == seed.get(key):
                 body[key] = value
             elif key == "detail" and value in {

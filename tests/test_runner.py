@@ -91,3 +91,66 @@ def test_cli_returns_failure_when_expectation_is_not_met(tmp_path, monkeypatch):
         "sys.argv", ["lab.cli", "--scenario", "bola", "--output-dir", str(tmp_path)]
     )
     assert main() == 1
+
+
+def test_report_limit_preserves_existing_evidence(tmp_path, monkeypatch):
+    monkeypatch.setattr("lab.reports.MAX_REPORTS", 1, raising=False)
+    paths = save_report(run_scenario("bola"), tmp_path)
+    originals = {path: path.read_bytes() for path in paths}
+    with pytest.raises(OSError, match="Report limit reached"):
+        save_report(run_scenario("bfla"), tmp_path)
+    assert {path: path.read_bytes() for path in paths} == originals
+    assert len(list(tmp_path.glob("*.json"))) == 1
+    assert len(list(tmp_path.glob("*.md"))) == 1
+
+
+def test_existing_report_identifier_is_not_overwritten(tmp_path):
+    result = run_scenario("bola")
+    paths = save_report(result, tmp_path)
+    original = {path: path.read_bytes() for path in paths}
+    result["passed"] = False
+    with pytest.raises(FileExistsError):
+        save_report(result, tmp_path)
+    assert {path: path.read_bytes() for path in paths} == original
+
+
+def test_report_write_failure_removes_only_new_partial_files(tmp_path, monkeypatch):
+    saved = save_report(run_scenario("bola"), tmp_path)
+    original = {path: path.read_bytes() for path in saved}
+    result = run_scenario("bfla")
+    open_file = type(tmp_path).open
+
+    def failing_open(path, *args, **kwargs):
+        if path.name == f"{result['id']}.md":
+            raise OSError("Simulated storage failure")
+        return open_file(path, *args, **kwargs)
+
+    monkeypatch.setattr(type(tmp_path), "open", failing_open)
+    with pytest.raises(OSError, match="Simulated storage failure"):
+        save_report(result, tmp_path)
+    assert not (tmp_path / f"{result['id']}.json").exists()
+    assert {path: path.read_bytes() for path in saved} == original
+
+
+def test_unknown_evidence_field_names_are_not_exported():
+    evidence = _evidence(
+        httpx.Response(200, json={"private-key-in-field-name": "value"})
+    )
+    assert evidence["body"] == {}
+
+
+def test_concurrent_report_writes_respect_the_limit(tmp_path, monkeypatch):
+    monkeypatch.setattr("lab.reports.MAX_REPORTS", 1)
+    results = [run_scenario("bola"), run_scenario("bfla")]
+
+    def save(result):
+        try:
+            save_report(result, tmp_path)
+            return True
+        except OSError:
+            return False
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(save, results))
+    assert sorted(outcomes) == [False, True]
+    assert len(list(tmp_path.glob("*.json"))) == len(list(tmp_path.glob("*.md"))) == 1
