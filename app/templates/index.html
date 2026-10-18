@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>APIsec — Security Lab</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/lab.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir para o conteúdo</a>
+  <header class="topbar"><a class="brand" href="/">API<span>sec</span><span class="version">v2.0</span></a><nav aria-label="Principal"><a href="#lab">Security Lab</a><a href="#reports">Relatórios</a><a href="/docs">API docs ↗</a></nav></header>
+  <main id="main">
+    <section class="intro"><p class="eyebrow">APPLICATION SECURITY / LABORATÓRIO LOCAL</p><h1>Entenda a falha.<br><span>Comprove a proteção.</span></h1><p class="lead">Três simulações controladas para explorar autorização e exposição de dados em APIs. Compare o ataque com a correção, sem configurar requisições.</p><span class="environment"><span aria-hidden="true">●</span> Dados fictícios · Execuções isoladas</span></section>
+    <section class="metrics" aria-label="Resumo do laboratório"><article><span>Cenários disponíveis</span><strong>03</strong><small>BOLA · BFLA · BOPLA</small></article><article><span>Simulações nesta sessão</span><strong id="run-count">00</strong><small id="run-summary">Pronto para começar</small></article><article><span>Última suíte registrada</span><strong class="test-value" id="test-count">—</strong><small id="test-summary">Consultando relatório JUnit…</small></article></section>
+    <section id="lab" class="lab-section"><div class="section-heading"><div><p class="eyebrow">01 / SECURITY LAB</p><h2>Escolha um cenário</h2></div><span class="subtle">Referências OWASP API Security 2023</span></div><div id="scenario-list" class="scenario-grid" role="group" aria-label="Cenários"><p>Carregando cenários…</p></div><div class="run-bar"><p id="scenario-description">Selecione uma simulação para ver os detalhes.</p><button id="run" type="button" disabled>Executar simulação <span aria-hidden="true">↗</span></button></div><p id="status" role="status" aria-live="polite"></p></section>
+    <section id="results" class="result-section" hidden><div class="section-heading"><div><p class="eyebrow">02 / COMPARAÇÃO</p><h2 id="result-title">Resultado da simulação</h2></div><span id="result-verdict" class="badge"></span></div><p class="operation"><span id="result-operation"></span><span id="result-user"></span></p><div class="comparison"><article class="response vulnerable"><div class="response-heading"><h3>Versão vulnerável</h3><span id="vulnerable-code"></span></div><pre id="vulnerable-body" tabindex="0" aria-label="Resposta da versão vulnerável"></pre></article><article class="response protected"><div class="response-heading"><h3>Versão protegida</h3><span id="protected-code"></span></div><pre id="protected-body" tabindex="0" aria-label="Resposta da versão protegida"></pre></article></div><div class="explanations"><article><h3>Impacto demonstrado</h3><p id="result-impact"></p></article><article><h3>Como a proteção funciona</h3><p id="result-mitigation"></p></article></div></section>
+    <section id="reports" class="report-section"><div><p class="eyebrow">03 / RELATÓRIOS</p><h2>Evidências que você pode levar</h2><p>Exporte a simulação atual com operação, respostas e mitigação. Os resultados são demonstrações controladas, não descobertas em sistemas reais.</p></div><div class="downloads"><button id="download-md" class="secondary" type="button" disabled>Baixar Markdown ↓</button><button id="download-json" class="secondary" type="button" disabled>Baixar JSON ↓</button></div><details id="report-preview" hidden><summary>Visualizar relatório Markdown</summary><pre id="markdown-preview" tabindex="0"></pre></details></section>
+  </main><footer><span>APIsec / AppSec na prática</span><span>Autenticação demonstrativa. Uso educacional local.</span></footer>
+</body>
+</html>

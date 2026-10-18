@@ -1,6 +1,8 @@
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi.staticfiles import StaticFiles
 
 from app.auth import User, require_authentication
 from app.data import create_documents
@@ -40,6 +42,16 @@ def create_app(*, include_ui: bool = True) -> FastAPI:
             raise HTTPException(status_code=404, detail="Document not found")
         del application.state.documents[document_id]
         return Response(status_code=204)
+
+    if include_ui:
+        from app.web import router
+
+        application.include_router(router)
+        application.mount(
+            "/static",
+            StaticFiles(directory=Path(__file__).parent / "static"),
+            name="static",
+        )
 
     return application
 
