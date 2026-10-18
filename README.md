@@ -1,7 +1,6 @@
 # APIsec-LabTest
 
-Laboratório local de AppSec com FastAPI. Bloco 1: autenticação demonstrativa,
-autorização e documentos sintéticos em memória.
+Laboratório local de AppSec com FastAPI. 
 
 ## Executar
 
