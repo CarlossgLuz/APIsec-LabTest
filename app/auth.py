@@ -3,6 +3,7 @@ from typing import Annotated, TypedDict
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+
 class User(TypedDict):
     id: int
     role: str

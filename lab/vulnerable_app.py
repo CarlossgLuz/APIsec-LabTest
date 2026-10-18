@@ -1,16 +1,15 @@
-from copy import deepcopy
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Response
 
 from app.auth import User, require_authentication
-from app.main import documents
+from app.data import create_documents
 from app.policies import Document
 
 
 def create_vulnerable_app() -> FastAPI:
     app = FastAPI(title="APIsec vulnerable lab")
-    app.state.documents = deepcopy(documents)
+    app.state.documents = create_documents()
 
     @app.get("/documents/{document_id}")
     def get_document(

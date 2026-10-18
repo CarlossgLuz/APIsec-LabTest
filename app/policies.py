@@ -10,6 +10,7 @@ class Document(TypedDict):
     owner_id: int
     title: str
     content: str
+    internal_notes: str
 
 
 def can_read_document(user: User, document: Document) -> bool:
