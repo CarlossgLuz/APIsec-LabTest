@@ -1,6 +1,6 @@
 # APIsec-LabTest
 
-Laboratório local de AppSec com FastAPI. 
+Laboratório local de AppSec com FastAPI, testes de autorização e demonstrações de BOLA e BFLA.
 
 ## Executar
 
@@ -46,11 +46,32 @@ Os testes restauram o estado em memória após cada caso, inclusive quando falha
 Há cobertura de autenticação, isolamento entre proprietários, privilégios de Admin,
 exclusão, documento inexistente e health check.
 
-## Limites e próximos blocos
+## BOLA e BFLA
+
+Os testes comparam a API segura com uma aplicação vulnerável isolada:
+
+| Cenário | API vulnerável | API segura |
+| --- | --- | --- |
+| Alice lê o documento de Bob (BOLA) | `200` | `404` |
+| Alice exclui o documento de Bob (BFLA) | `204` | `403` |
+
+```sh
+python -m pytest tests/test_attack_scenarios.py -v
+```
+
+A aplicação em `lab/vulnerable_app.py` é instanciada pelo `TestClient`,
+com dados independentes e sem abrir servidor. Os testes passam quando demonstram
+as falhas na versão vulnerável e os bloqueios na segura.
+
+## GitHub Actions
+
+O [workflow de testes](.github/workflows/security-tests.yml) executa
+`python -m pytest -v` com Python 3.13 em pushes para `main`, pull requests
+ou acionamento manual. Consulte as execuções na aba
+[Actions](https://github.com/CarlossgLuz/APIsec-LabTest/actions).
+
+## Limites
 
 Tokens fixos são somente demonstrativos e não servem para produção.
 Os documentos são locais ao processo e reiniciam com o servidor; execute um único worker.
-Não há frontend, banco de dados ou JWT. Simulações ofensivas BOLA/BFLA e GitHub Actions
-ficam para os próximos blocos.
-
-Registro da entrega e validação: [docs/bloco-1.md](docs/bloco-1.md).
+Não há frontend, banco de dados ou JWT.
