@@ -6,7 +6,7 @@ Todos os resultados são simulações controladas com dados fictícios.
 
 ## Executar localmente
 
-Requisitos: Python 3.13 ou Docker com Compose v2.
+Requisitos: Linux com Python 3.13 ou Docker com Compose v2.
 
 ```sh
 python -m venv .venv
@@ -52,7 +52,8 @@ Para chamadas diretas, use `Authorization: Bearer <token>`:
 | Admin | `admin-token` | 3 | admin |
 
 São valores públicos de laboratório, sem validade como autenticação de produção.
-Não exponha esta aplicação à internet.
+Não exponha esta aplicação à internet. Hosts externos e POSTs de outra origem
+são rejeitados; a interface deve ser acessada por `localhost` ou `127.0.0.1`.
 
 ## Relatórios e testes
 
@@ -75,9 +76,17 @@ O dashboard lê os totais do último `junit.xml`; ele não executa Pytest pelo n
 Sem esse arquivo, mostra “Sem registro”. O arquivo representa a última execução
 registrada, não uma verificação contínua do código.
 
-`REPORTS_DIR` configura o diretório de saída, com padrão `reports/`. Os relatórios
-não são versionados e se acumulam: remova os que não precisar mais. A interface
-mostra somente o resultado da sessão atual, sem histórico compartilhado.
+`REPORTS_DIR` configura o diretório de saída, com padrão `reports/`. O limite é de
+500 pares JSON/Markdown por diretório; ao atingi-lo, novas gravações são recusadas
+e a interface retorna `503`. Não há expiração ou exclusão automática. Antes de
+liberar espaço, revise e arquive os pares antigos fora desse diretório; no Docker,
+copie-os do volume antes de qualquer limpeza manual. A aplicação não remove
+evidências existentes.
+
+As gravações são serializadas entre processos e IDs existentes não são
+sobrescritos. Uma falha de gravação remove somente os arquivos novos daquela
+execução. A interface mostra somente o resultado da sessão atual, sem histórico compartilhado.
+Relatórios, caches e arquivos temporários ficam fora do Git.
 
 ## Docker Compose
 
@@ -179,10 +188,18 @@ Não há banco de dados, scanner de URLs ou autenticação de produção. Os dad
 API principal são locais ao processo e reiniciam com o servidor; use um único worker.
 As simulações sempre partem de cópias novas.
 
-Validação local: 65 testes aprovados, Ruff e Bandit sem achados. Imagem construída
+Validação local: 86 testes aprovados em ordem normal, inversa e aleatória;
+Ruff, Bandit e `pip check` aprovados. Imagem construída
 e Compose com health check aprovado no Docker Engine 29.9.0 / Compose 5.6.0.
-Dashboard, três cenários via HTTP e CLI, relatórios e exclusões repetidas verificados.
-O teste utilizou `APISEC_PORT=8001`, preservando o serviço já existente na porta 8000.
+Build limpo, dashboard desktop/mobile, cenários via HTTP e CLI, exportações,
+exclusões repetidas e encerramento controlado verificados em projeto isolado
+com `APISEC_PORT=8002`. Containers e volumes anteriores foram preservados.
+A base usa digest fixo e as dependências existentes, incluindo transitivas, têm
+versões exatas. O container e o ambiente local usam os mesmos 20 pacotes runtime.
+
+Starlette emite um aviso de depreciação do TestClient com httpx. Os cenários passam;
+nenhuma validação foi desativada para ocultar esse aviso. As verificações locais
+não comprovam uma execução remota do GitHub Actions.
 
 Se o terminal do VS Code estiver em Flatpak, o Docker pode estar disponível apenas
 no sistema hospedeiro. Execute os comandos em um terminal do host.
