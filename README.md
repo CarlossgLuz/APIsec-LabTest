@@ -88,9 +88,18 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-Acesse http://127.0.0.1:8000. O serviço usa usuário sem privilégios, filesystem
+Acesse http://127.0.0.1:8000. Se a porta estiver ocupada, escolha outra:
+
+```sh
+APISEC_PORT=8001 docker compose up -d --wait
+```
+
+Nesse caso, acesse http://127.0.0.1:8001 e use o mesmo `APISEC_PORT` nos próximos
+comandos de inicialização ou atualização. A publicação permanece no loopback.
+
+O serviço usa usuário sem privilégios, filesystem
 somente leitura, volume gravável para relatórios, health check e limites de CPU,
-memória, processos e logs. Apenas `127.0.0.1:8000` é publicado no host.
+memória, processos e logs. A porta escolhida é publicada apenas em `127.0.0.1`.
 
 ```sh
 # Gerar relatórios dentro do container
@@ -170,9 +179,13 @@ Não há banco de dados, scanner de URLs ou autenticação de produção. Os dad
 API principal são locais ao processo e reiniciam com o servidor; use um único worker.
 As simulações sempre partem de cópias novas.
 
-Validação local: suíte Python, Ruff e Bandit executados. Build e execução do container
-ainda precisam ser confirmados em um host com Docker; o ambiente de desenvolvimento
-usado nesta entrega não dispõe de runtime de containers.
+Validação local: 65 testes aprovados, Ruff e Bandit sem achados. Imagem construída
+e Compose com health check aprovado no Docker Engine 29.9.0 / Compose 5.6.0.
+Dashboard, três cenários via HTTP e CLI, relatórios e exclusões repetidas verificados.
+O teste utilizou `APISEC_PORT=8001`, preservando o serviço já existente na porta 8000.
+
+Se o terminal do VS Code estiver em Flatpak, o Docker pode estar disponível apenas
+no sistema hospedeiro. Execute os comandos em um terminal do host.
 
 Referências: [OWASP API Security 2023](https://owasp.org/API-Security/editions/2023/en/0x00-header/)
 e [Compose Specification](https://docs.docker.com/reference/compose-file/services/).
