@@ -1,0 +1,30 @@
+services:
+  apisec:
+    build: .
+    image: apisec-lab:${APISEC_IMAGE_TAG:-local}
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      REPORTS_DIR: /app/reports
+    volumes:
+      - reports:/app/reports
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 64
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  reports:

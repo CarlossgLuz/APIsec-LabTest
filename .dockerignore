@@ -1,0 +1,9 @@
+*
+!requirements.txt
+!app/
+!app/**
+!lab/
+!lab/**
+**/__pycache__/
+**/*.py[cod]
+**/.env*
