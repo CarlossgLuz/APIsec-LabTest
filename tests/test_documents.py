@@ -69,7 +69,9 @@ def test_admin_delete_missing_document():
 
 @pytest.mark.parametrize("method", ["get", "delete"])
 @pytest.mark.parametrize(
-    "authorization", [None, "Bearer unknown-token", "Basic alice-token", "Bearer"]
+    "authorization",
+    [None, "Bearer unknown-token", "Basic alice-token", "Bearer"],
+    ids=["missing", "unknown", "wrong-scheme", "empty-bearer"],
 )
 def test_authentication_applies_to_both_routes(method, authorization):
     response = getattr(client, method)(
